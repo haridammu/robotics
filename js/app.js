@@ -77,8 +77,66 @@ async function fetchWithBackoff(url, options, maxRetries = 5, delay = 1000) {
 }
 
 
-// Main Application Logic
 window.app = {
+    // Firebase initialization
+    firebaseConfig: {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    },
+
+    initFirebase() {
+        if (!firebase.apps.length) {
+            firebase.initializeApp(this.firebaseConfig);
+            this.db = firebase.firestore();
+        }
+    },
+
+    saveSubscriptionToFirestore: async function(subscriptionData) {
+        try {
+            await this.db.collection('subscriptions').add(subscriptionData);
+            this.showMessage('Subscription saved successfully!', 'success');
+        } catch (error) {
+            this.showMessage('Failed to save subscription: ' + error.message, 'error');
+        }
+    },
+
+    saveContactToFirestore: async function(contactData) {
+        try {
+            await this.db.collection('contacts').add(contactData);
+            this.showMessage('Contact message sent successfully!', 'success');
+        } catch (error) {
+            this.showMessage('Failed to send contact message: ' + error.message, 'error');
+        }
+    },
+
+    loadAdminDataFromFirestore: async function() {
+        try {
+            const subscriptionsSnapshot = await this.db.collection('subscriptions').orderBy('timestamp', 'desc').get();
+            this.state.subscribedData = subscriptionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            const contactsSnapshot = await this.db.collection('contacts').orderBy('timestamp', 'desc').get();
+            this.state.contactData = contactsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            this.renderAdminDashboard();
+        } catch (error) {
+            this.showMessage('Failed to load admin data: ' + error.message, 'error');
+        }
+    },
+
+    deleteAdminRecord: async function(collection, id) {
+        try {
+            await this.db.collection(collection).doc(id).delete();
+            this.showMessage('Record deleted successfully!', 'success');
+            await this.loadAdminDataFromFirestore();
+        } catch (error) {
+            this.showMessage('Failed to delete record: ' + error.message, 'error');
+        }
+    },
+
     state: {
         currentPage: 'home',
         isAuthenticated: false,
@@ -186,10 +244,7 @@ window.app = {
         const phone = document.getElementById('sub-phone').value;
         const resumeFile = document.getElementById('sub-resume').files[0];
 
-        // Store the submitted data
-        this.state.subscribedData.push({
-            id: this.state.subscribedData.length + 1,
-            date: new Date().toLocaleDateString(),
+        const subscriptionData = {
             name,
             qualification,
             domain,
@@ -197,11 +252,11 @@ window.app = {
             email,
             phone,
             resumeName: resumeFile ? resumeFile.name : 'N/A',
-            resumeFileObject: resumeFile || null
-        });
+            timestamp: new Date()
+        };
 
+        this.saveSubscriptionToFirestore(subscriptionData);
         this.hideSubscribeModal();
-        this.showMessage(`Thank you, ${name}! Your subscription details have been noted.`, 'success');
     },
     
     updateResumeLabel(input) {
@@ -447,10 +502,7 @@ renderAuthModal() {
         const phone = document.getElementById('contact-phone').value;
         const resumeFile = document.getElementById('contact-resume').files[0];
 
-        // Store the submitted data
-        this.state.subscribedData.push({
-            id: this.state.subscribedData.length + 1,
-            date: new Date().toLocaleDateString(),
+        const contactData = {
             name,
             qualification,
             domain,
@@ -458,12 +510,11 @@ renderAuthModal() {
             email,
             phone,
             resumeName: resumeFile ? resumeFile.name : 'N/A',
-            resumeFileObject: resumeFile || null,
-            isContactForm: true
-        });
+            timestamp: new Date()
+        };
 
+        this.saveContactToFirestore(contactData);
         this.hideContactModal();
-        this.showMessage(`Thank you, ${name}! Your message has been sent. We will get back to you soon.`, 'success');
     },
 
     // ... (TTS and Carousel logic remain)
@@ -530,14 +581,17 @@ renderAuthModal() {
 };
 
 window.onload = function () {
+    // Initialize Firebase
+    window.app.initFirebase();
+
     // Initial data setup: Use 'admin@tech.com' with password 'adminpass123'
-    window.app.state.registeredUsers['test@example.com'] = { password: 'password123', username: 'TestUser' }; 
-    window.app.state.registeredUsers['robot@tech.com'] = { password: 'pass', username: 'RobotUser' }; 
-    
+    window.app.state.registeredUsers['test@example.com'] = { password: 'password123', username: 'TestUser' };
+    window.app.state.registeredUsers['robot@tech.com'] = { password: 'pass', username: 'RobotUser' };
+
     window.app.state.activeLogins['robot@tech.com'] = Date.now();
-    
+
     window.app.state.subscribedData.push({
-        id: 1, date: new Date().toLocaleDateString(), name: 'Alice Chen', qualification: 'PhD Robotics', 
+        id: 1, date: new Date().toLocaleDateString(), name: 'Alice Chen', qualification: 'PhD Robotics',
         domain: 'Swarm Control', linkedin: 'link_a', email: 'alice@mail.com', resumeName: 'alice_resume.pdf'
     });
 
@@ -551,9 +605,9 @@ window.onload = function () {
         });
     }
 
-    window.app.render(); 
+    window.app.render();
 
     setInterval(() => {
         window.app.nextSlide();
-    }, 5000); 
+    }, 5000);
 };
