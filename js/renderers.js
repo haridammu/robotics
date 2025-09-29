@@ -387,7 +387,7 @@ window.app.renderFooter = function() {
     const socialLinks = [
         { icon: 'fab fa-whatsapp', href: 'https://wa.me/919154631244', name: 'WhatsApp', color: 'text-white hover:text-green-400' },
         { icon: 'fas fa-envelope', href: mailtoLink, name: 'Gmail (Sundar Pichai)', color: 'text-white hover:text-red-400' },
-        { icon: 'fab fa-linkedin', href: 'https://www.linkedin.com/in/sundarpichai/', name: 'LinkedIn', color: 'text-white hover:text-blue-200' },
+        { icon: 'fab fa-linkedin', href: 'https://www.linkedin.com/in/rameshbommidi/', name: 'LinkedIn', color: 'text-white hover:text-blue-200' },
         { icon: 'fab fa-youtube', href: 'https://www.youtube.com/@Google', name: 'YouTube', color: 'text-white hover:text-red-400' },
         { icon: 'fab fa-instagram', href: 'https://www.instagram.com/sundarpichai/?hl=en', name: 'Instagram', color: 'text-white hover:text-pink-400' },
         { icon: 'fab fa-twitter', href: 'https://twitter.com/sundarpichai', name: 'Twitter (X)', color: 'text-white hover:text-sky-400' },
