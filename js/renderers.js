@@ -141,7 +141,7 @@ window.app.renderHome = function() {
                 ${this.renderCarousel()}
             </section>
 
-            <section class="mb-16 p-10 rounded-xl glass-card bg-no-repeat bg-cover bg-center" style="background-image: url('https://placehold.co/1200x300/e0f2ff/000080?text=Innovation+Background');">
+            <section class="mb-16 p-10 rounded-xl glass-card bg-no-repeat bg-cover bg-center">
                 <h2 class="text-4xl font-extrabold text-blue-600 mb-6 text-center anim-pulse-on-click">OUR GOAL</h2>
                 <div class="relative">
                     <div class="p-6 rounded-lg bg-white/70 backdrop-blur-sm animate-goal border border-blue-400/30 shadow-md">
@@ -248,6 +248,11 @@ window.app.renderCarousel = function() {
 window.app.renderProjects = function() {
     const { user } = this.state;
     const userName = user?.username ? user.username : 'Guest';
+
+    // We will add a state to track which project card is expanded to show overlay
+    if (!this.state.expandedProjectId) {
+        this.state.expandedProjectId = null;
+    }
     
     return `
         <div class="container mx-auto px-4 py-8">
@@ -259,17 +264,15 @@ window.app.renderProjects = function() {
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 ${this.projectsData.map(project => `
-                    <div class="glass-card rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transition duration-300 border-blue-400/50">
-                        <div class="project-image-container" style="background-image: url('${project.image}');">
-                            <div class="project-image-overlay">
-                                <h3 class="text-2xl font-bold text-white leading-tight mb-1">${project.title}</h3>
-                                <p class="text-gray-200 text-sm">${project.description}</p>
-                            </div>
+                    <div class="glass-card rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transition duration-300 border-blue-400/50 relative cursor-pointer"
+                        onclick="window.app.toggleProjectOverlay(${project.id})"
+                    >
+                        <div class="project-image-container w-full h-64 bg-cover bg-center" style="background-image: url('${project.image}');">
                         </div>
-                        
-                        <div class="p-6 flex flex-col justify-between">
-                            <button onclick="window.app.handleNavigation('projectDetails', false, ${project.id})"
-                                class="w-full py-2 mt-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition duration-300 shadow-md"
+                        <div class="project-image-overlay absolute inset-0 bg-black bg-opacity-70 text-white p-6 flex flex-col justify-center items-center transition-opacity duration-300 ${this.state.expandedProjectId === project.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}">
+                            <h3 class="text-3xl font-bold mb-4">${project.title}</h3>
+                            <button onclick="event.stopPropagation(); window.app.handleNavigation('projectDetails', false, ${project.id})"
+                                class="py-3 px-8 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold transition duration-300 shadow-md"
                             >
                                 See Details
                             </button>
@@ -279,6 +282,14 @@ window.app.renderProjects = function() {
             </div>
         </div>
     `;
+};
+
+window.app.toggleProjectOverlay = function(projectId) {
+    if (this.state.expandedProjectId === projectId) {
+        this.setState({ expandedProjectId: null });
+    } else {
+        this.setState({ expandedProjectId: projectId });
+    }
 };
 
 // --- Project Details Page Content (Unchanged) ---
@@ -433,7 +444,7 @@ window.app.renderAdminDashboard = function() {
             <td class="px-6 py-4">${data.qualification}</td>
             <td class="px-6 py-4">${data.domain}</td>
             <td class="px-6 py-4">${data.linkedin ? `<a href="${data.linkedin}" target="_blank" class="text-blue-500 hover:underline">Link</a>` : 'N/A'}</td>
-            <td class="px-6 py-4">${data.resumeName}</td>
+            <td class="px-6 py-4">${data.resumeName ? `<a href="#" onclick="window.app.downloadResume(${data.id})" class="text-blue-600 hover:underline">${data.resumeName}</a>` : 'N/A'}</td>
             <td class="px-6 py-4 text-sm text-gray-500">${data.date}</td>
         </tr>
     `).join('');
@@ -483,10 +494,26 @@ window.app.renderAdminDashboard = function() {
     `;
 };
 
+window.app.downloadResume = function(id) {
+    const record = this.state.subscribedData.find(item => item.id === id);
+    if (record && record.resumeFileObject) {
+        const url = URL.createObjectURL(record.resumeFileObject);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = record.resumeName || 'resume';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } else {
+        this.showMessage('No resume file available for download.', 'error');
+    }
+};
+
 window.app.renderFooter = function() {
     const { user, isAuthenticated } = this.state;
     const userEmail = isAuthenticated ? user.email : 'UnauthenticatedUser@techrobotics.com';
-    
+
     const mailBody = encodeURIComponent(`Hello Sundar Pichai,\n\nI am writing to you from the TechRobotics website regarding [Your Subject Here].\n\n[Your Message Here]\n\nRegards,\n(Sent by: ${userEmail})`);
     const mailSubject = encodeURIComponent("Inquiry from TechRobotics Website User");
     const mailtoLink = `mailto:sundarpichai@gmail.com?subject=${mailSubject}&body=${mailBody}`;
@@ -495,7 +522,7 @@ window.app.renderFooter = function() {
         { icon: 'fab fa-whatsapp', href: 'https://wa.me/919154631244', name: 'WhatsApp', color: 'text-white hover:text-green-400' },
         { icon: 'fas fa-envelope', href: mailtoLink, name: 'Gmail (Sundar Pichai)', color: 'text-white hover:text-red-400' },
         { icon: 'fab fa-linkedin', href: 'https://www.linkedin.com/in/sundarpichai/', name: 'LinkedIn', color: 'text-white hover:text-blue-200' },
-        { icon: 'fab fa-youtube', href: 'https://www.youtube.com/@Google', name: 'YouTube', color: 'text-white hover:text-red-400' },
+        { icon: 'fab fa-youtube', href: 'https://www.youtube.com/@RobotixwithSina', name: 'YouTube', color: 'text-white hover:text-red-400' },
         { icon: 'fab fa-instagram', href: 'https://www.instagram.com/sundarpichai/?hl=en', name: 'Instagram', color: 'text-white hover:text-pink-400' },
         { icon: 'fab fa-twitter', href: 'https://twitter.com/sundarpichai', name: 'Twitter (X)', color: 'text-white hover:text-sky-400' },
     ];
@@ -503,12 +530,17 @@ window.app.renderFooter = function() {
     const footerHTML = `
         <div class="container mx-auto flex flex-col md:flex-row items-center justify-between text-sm text-blue-200 px-4">
             <p>&copy; ${new Date().getFullYear()} TechRobotics. All rights reserved.</p>
-            <div class="flex space-x-6 mt-3 md:mt-0">
-                ${socialLinks.map(link => `
-                    <a href="${link.href}" target="_blank" rel="noopener noreferrer" class="hover:scale-110 transition duration-300 ${link.color}" title="${link.name}">
-                        <i class="${link.icon} text-2xl"></i>
-                    </a>
-                `).join('')}
+            <div class="flex items-center space-x-4 mt-3 md:mt-0">
+                <button id="contact-us-btn" onclick="window.app.showContactModal()" class="py-2 px-4 rounded-full font-semibold transition duration-300 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/50">
+                    CONTACT US
+                </button>
+                <div class="flex space-x-6">
+                    ${socialLinks.map(link => `
+                        <a href="${link.href}" target="_blank" rel="noopener noreferrer" class="hover:scale-110 transition duration-300 ${link.color}" title="${link.name}">
+                            <i class="${link.icon} text-2xl"></i>
+                        </a>
+                    `).join('')}
+                </div>
             </div>
         </div>
     `;
