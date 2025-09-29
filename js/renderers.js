@@ -18,7 +18,7 @@ window.app.renderNavbar = function() {
         const userName = user?.username ? user.username : 'Guest';
         authButton = `
             <div class="flex items-center space-x-4">
-                <span class="text-sm font-medium text-blue-600 hidden md:block">WELCOME ${userName.toUpperCase()}</span>
+                <span class="text-sm font-medium ${user.role === 'admin' ? 'text-red-600' : 'text-blue-600'} hidden md:block">WELCOME ${userName.toUpperCase()}</span>
                 <button onclick="window.app.handleLogout()"
                     class="py-2 px-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold transition duration-300 shadow-lg shadow-red-500/50"
                 >
@@ -26,13 +26,25 @@ window.app.renderNavbar = function() {
                 </button>
             </div>
         `;
-        subscribeButton = `
-            <button onclick="window.app.showSubscribeModal()"
-                class="py-2 px-4 rounded-full font-semibold transition duration-300 bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/50"
-            >
-                SUBSCRIBE
-            </button>
-        `;
+        
+        if (user.role !== 'admin') {
+             subscribeButton = `
+                <button onclick="window.app.showSubscribeModal()"
+                    class="py-2 px-4 rounded-full font-semibold transition duration-300 bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/50"
+                >
+                    SUBSCRIBE
+                </button>
+            `;
+        } else {
+             // Admin Dashboard Link (Teal for Admin)
+             subscribeButton = `
+                <button onclick="window.app.handleNavigation('adminDashboard', false)"
+                    class="py-2 px-4 rounded-full font-semibold transition duration-300 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/50"
+                >
+                    ADMIN DASHBOARD
+                </button>
+            `;
+        }
     } else {
         const authMode = this.state.isAuthModeLogin ? 'LOGIN' : 'SIGN UP';
         authButton = `
@@ -45,6 +57,16 @@ window.app.renderNavbar = function() {
         `;
     }
 
+    // Admin Login button separate (Only visible when logged out)
+     const adminLoginBtn = !isAuthenticated ? `
+        <button onclick="window.app.showAuthModal(true, true)"
+            class="py-2 px-4 rounded-full font-semibold transition duration-300 bg-gray-700 hover:bg-gray-800 text-white shadow-lg shadow-gray-500/50 hidden md:block"
+        >
+            ADMIN LOGIN
+        </button>
+    ` : '';
+
+
     const navHTML = `
         <nav class="flex items-center justify-between p-4 px-8 backdrop-blur-md bg-white/95 sticky top-0 z-40 border-b border-blue-200 shadow-lg">
             <div class="flex items-center space-x-2">
@@ -53,6 +75,9 @@ window.app.renderNavbar = function() {
             </div>
             <div class="hidden md:flex items-center space-x-6">
                 ${navLinks.map(link => {
+                    // Hide main links for admin dashboard view
+                    if (user && user.role === 'admin' && link.page !== 'home') return '';
+                    
                     const activeClass = currentPage === link.page ? 'bg-blue-600 text-white shadow-md' : 'text-gray-700 hover:text-blue-600';
                     return `
                         <button 
@@ -65,6 +90,7 @@ window.app.renderNavbar = function() {
                 }).join('')}
             </div>
             <div class="flex items-center space-x-4">
+                ${adminLoginBtn}
                 ${subscribeButton}
                 ${authButton}
             </div>
@@ -75,7 +101,13 @@ window.app.renderNavbar = function() {
 
 // --- Content Switcher (Unchanged) ---
 window.app.renderContent = function() {
-    const { currentPage } = this.state;
+    const { currentPage, isAuthenticated, user } = this.state;
+    
+    // Admin content guard
+    if (currentPage === 'adminDashboard' && (!isAuthenticated || user.role !== 'admin')) {
+        return `<div class="p-10 text-center container mx-auto"><h1 class="text-6xl font-extrabold text-red-600 mb-4">ACCESS DENIED</h1><p class="mt-4 text-2xl text-gray-600">You must be logged in as an Admin to view this page.</p></div>`;
+    }
+
     switch (currentPage) {
         case 'home':
             return this.renderHome();
@@ -89,6 +121,8 @@ window.app.renderContent = function() {
             return this.renderWorkshops();
         case 'workshopDetails':
             return this.renderWorkshopDetails(this.state.currentWorkshopId);
+        case 'adminDashboard': 
+            return this.renderAdminDashboard();
         case 'labs':
             return this.renderLabs(); 
         case 'resources':
@@ -98,7 +132,7 @@ window.app.renderContent = function() {
     }
 };
 
-// --- Home Page Content (Animation Added) ---
+// --- Home Page Content (Unchanged) ---
 window.app.renderHome = function() {
     return `
         <div class="container mx-auto px-4 py-8">
@@ -170,7 +204,6 @@ window.app.renderHome = function() {
 };
 
 window.app.renderCarousel = function() {
-    // ... (Unchanged from original)
     const { carouselIndex } = this.state;
     const currentImage = this.carouselImages[carouselIndex];
     
@@ -211,7 +244,7 @@ window.app.renderCarousel = function() {
 };
 
 
-// --- Projects Page Content (MODIFIED for Image Display) ---
+// --- Projects Page Content (Unchanged) ---
 window.app.renderProjects = function() {
     const { user } = this.state;
     const userName = user?.username ? user.username : 'Guest';
@@ -248,7 +281,7 @@ window.app.renderProjects = function() {
     `;
 };
 
-// --- Project Details Page Content (Animation Added) ---
+// --- Project Details Page Content (Unchanged) ---
 window.app.renderProjectDetails = function(projectId) {
     const project = this.projectsData.find(p => p.id === projectId) || this.projectsData[0];
     
@@ -280,7 +313,7 @@ window.app.renderProjectDetails = function(projectId) {
     `;
 };
 
-// --- Workshops Page Content (MODIFIED for Background) ---
+// --- Workshops Page Content (Unchanged) ---
 window.app.renderWorkshops = function() {
     const workshop = this.workshopData;
 
@@ -307,7 +340,7 @@ window.app.renderWorkshops = function() {
     `;
 };
 
-// --- Workshop Details Page Content (Animation Added) ---
+// --- Workshop Details Page Content (Unchanged) ---
 window.app.renderWorkshopDetails = function(workshopId) {
     const workshop = this.workshopData;
     
@@ -341,8 +374,7 @@ window.app.renderWorkshopDetails = function(workshopId) {
     `;
 };
 
-// ... (renderDetails, renderLabs, renderResources, renderFooter are unchanged)
-
+// --- Carousel Details Page Content (Unchanged) ---
 window.app.renderDetails = function() {
     const { isSpeaking } = this.state;
     return `
@@ -376,6 +408,81 @@ window.app.renderResources = function() {
 };
 
 
+// --- Admin Dashboard Page Content (Unchanged) ---
+window.app.renderAdminDashboard = function() {
+    const { registeredUsers, activeLogins, subscribedData } = this.state;
+
+    const totalUsers = Object.keys(registeredUsers).length;
+    const activeUsers = Object.keys(activeLogins).length;
+    const loggedOutUsers = totalUsers - activeUsers; 
+    const totalSubscribers = subscribedData.length;
+
+    const statsCards = [
+        { title: 'Total Signed Up', value: totalUsers, icon: 'user-plus', color: 'text-blue-600', bg: 'bg-blue-50' },
+        { title: 'Currently Active', value: activeUsers, icon: 'zap', color: 'text-green-600', bg: 'bg-green-50' },
+        { title: 'Logged Out', value: loggedOutUsers, icon: 'log-out', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+        { title: 'Total Subscriptions', value: totalSubscribers, icon: 'mail', color: 'text-purple-600', bg: 'bg-purple-50' },
+    ];
+
+    const subscriptionRows = subscribedData.map(data => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="px-6 py-4 font-medium text-gray-900">${data.id}</td>
+            <td class="px-6 py-4">${data.name}</td>
+            <td class="px-6 py-4">${data.email}</td>
+            <td class="px-6 py-4">${data.phone || 'N/A'}</td>
+            <td class="px-6 py-4">${data.qualification}</td>
+            <td class="px-6 py-4">${data.domain}</td>
+            <td class="px-6 py-4">${data.linkedin ? `<a href="${data.linkedin}" target="_blank" class="text-blue-500 hover:underline">Link</a>` : 'N/A'}</td>
+            <td class="px-6 py-4">${data.resumeName}</td>
+            <td class="px-6 py-4 text-sm text-gray-500">${data.date}</td>
+        </tr>
+    `).join('');
+
+    return `
+        <div class="container mx-auto px-4 py-8">
+            <h1 class="text-5xl font-extrabold text-teal-600 mb-10 text-center anim-pulse-on-click">Admin Dashboard</h1>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                ${statsCards.map(card => `
+                    <div class="glass-card p-6 rounded-xl border-t-4 border-${card.color.replace('text-', '')} shadow-lg flex items-center justify-between transition duration-300 hover:shadow-xl">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">${card.title}</p>
+                            <p class="text-4xl font-extrabold text-gray-900">${card.value}</p>
+                        </div>
+                        <div class="p-3 rounded-full ${card.bg}">
+                            <i data-lucide="${card.icon}" class="w-8 h-8 ${card.color}"></i>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+
+            <h2 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-2">User Subscription Records (${totalSubscribers})</h2>
+            <div class="glass-card p-6 rounded-xl shadow-lg overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-blue-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qualification</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Domain</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LinkedIn</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resume</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${totalSubscribers > 0 ? subscriptionRows : `
+                            <tr><td colspan="9" class="px-6 py-4 text-center text-gray-500">No subscription records found.</td></tr>
+                        `}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+};
+
 window.app.renderFooter = function() {
     const { user, isAuthenticated } = this.state;
     const userEmail = isAuthenticated ? user.email : 'UnauthenticatedUser@techrobotics.com';
@@ -387,7 +494,7 @@ window.app.renderFooter = function() {
     const socialLinks = [
         { icon: 'fab fa-whatsapp', href: 'https://wa.me/919154631244', name: 'WhatsApp', color: 'text-white hover:text-green-400' },
         { icon: 'fas fa-envelope', href: mailtoLink, name: 'Gmail (Sundar Pichai)', color: 'text-white hover:text-red-400' },
-        { icon: 'fab fa-linkedin', href: 'https://www.linkedin.com/in/rameshbommidi/', name: 'LinkedIn', color: 'text-white hover:text-blue-200' },
+        { icon: 'fab fa-linkedin', href: 'https://www.linkedin.com/in/sundarpichai/', name: 'LinkedIn', color: 'text-white hover:text-blue-200' },
         { icon: 'fab fa-youtube', href: 'https://www.youtube.com/@Google', name: 'YouTube', color: 'text-white hover:text-red-400' },
         { icon: 'fab fa-instagram', href: 'https://www.instagram.com/sundarpichai/?hl=en', name: 'Instagram', color: 'text-white hover:text-pink-400' },
         { icon: 'fab fa-twitter', href: 'https://twitter.com/sundarpichai', name: 'Twitter (X)', color: 'text-white hover:text-sky-400' },
