@@ -142,6 +142,15 @@ window.app = {
     },
 
     showSubscribeModal() {
+        // If user is logged in, show thank you popup and redirect to Sundar Pichai YouTube channel
+        if (this.state.isAuthenticated && this.state.user.role !== 'admin') {
+            this.showMessage("Thank you for showing interest in joining us", "success");
+            setTimeout(() => {
+                window.open("https://www.youtube.com/@RobotixwithSina", "_blank");
+            }, 1000);
+            return;
+        }
+
         const modal = document.getElementById('subscribe-modal');
         modal.classList.remove('hidden');
         const content = modal.querySelector('.modal-content');
@@ -187,7 +196,8 @@ window.app = {
             linkedin,
             email,
             phone,
-            resumeName: resumeFile ? resumeFile.name : 'N/A'
+            resumeName: resumeFile ? resumeFile.name : 'N/A',
+            resumeFileObject: resumeFile || null
         });
 
         this.hideSubscribeModal();
@@ -196,6 +206,15 @@ window.app = {
     
     updateResumeLabel(input) {
          const label = document.getElementById('resume-file-label');
+         if (input.files.length > 0) {
+             label.textContent = `File selected: ${input.files[0].name}`;
+         } else {
+             label.textContent = 'No file selected.';
+         }
+    },
+
+    updateContactResumeLabel(input) {
+         const label = document.getElementById('contact-resume-file-label');
          if (input.files.length > 0) {
              label.textContent = `File selected: ${input.files[0].name}`;
          } else {
@@ -278,8 +297,8 @@ renderAuthModal() {
     // Button Styling and Text Logic (FIXED TO USE ADMIN RED)
     if (submitBtn) {
         // Remove all existing color classes for clean application
-        submitBtn.className = submitBtn.className.replace(/\b(bg-(blue|green|red)-[67]00|shadow-(blue|green|red)-500\/50)\b/g, ''); 
-        
+        submitBtn.className = submitBtn.className.replace(/\b(bg-(blue|green|red)-[67]00|shadow-(blue|green|red)-500\/50)\b/g, '');
+
         if (isAdminMode) {
              submitBtn.textContent = 'Login';
              submitBtn.classList.add('bg-red-600', 'hover:bg-red-700', 'shadow-red-500/50'); // Admin is RED
@@ -292,9 +311,14 @@ renderAuthModal() {
              }
         }
     }
+
+    const toggleBtn = document.getElementById('toggle-auth-mode');
+    if (toggleBtn) {
+        toggleBtn.textContent = isAuthModeLogin ? 'Switch to Sign Up' : 'Switch to Login';
+    }
 },
 
-    async handleAuthSubmit(event) {
+    handleAuthSubmit(event) {
         event.preventDefault();
         const email = event.target.email.value.trim();
         const password = event.target.password.value.trim();
@@ -311,6 +335,8 @@ renderAuthModal() {
                     isAuthModeLogin: false,        
                     isAdminMode: false             
                 });
+                localStorage.setItem('isAuthenticated', 'true');
+                localStorage.setItem('user', JSON.stringify({ email: email, id: email, username: 'Admin', role: 'admin' }));
                 this.showMessage('Admin Login successful. Welcome to the Dashboard!', 'success');
                 this.hideAuthModal();
             } else {
@@ -338,6 +364,8 @@ renderAuthModal() {
                 }
                 
                 this.setState(newState);
+                localStorage.setItem('isAuthenticated', 'true');
+                localStorage.setItem('user', JSON.stringify({ email: email, id: email, username: userDetails.username, role: 'user' }));
                 this.showMessage(`Welcome back, ${userDetails.username}!`, 'success');
                 this.hideAuthModal();
             } else {
@@ -370,15 +398,72 @@ renderAuthModal() {
             delete this.state.activeLogins[user.email];
         }
 
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('user');
+
         this.showMessage(`You have been successfully logged out.`, 'success');
-        this.setState({ 
-            isAuthenticated: false, 
+        this.setState({
+            isAuthenticated: false,
             user: { email: null, id: null, username: null, role: 'user' },
-            currentPage: 'home', 
+            currentPage: 'home',
             isAuthModeLogin: false,
             isAdminMode: false,
             authRedirectTarget: null
         });
+    },
+
+    showContactModal() {
+        const modal = document.getElementById('contact-modal');
+        modal.classList.remove('hidden');
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.classList.add('animate-fadeInScale');
+        }
+        document.body.classList.add('modal-open');
+    },
+
+    hideContactModal() {
+        const modal = document.getElementById('contact-modal');
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.classList.add('animate-fadeOutScale');
+        }
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            if (content) {
+                content.classList.remove('animate-fadeInScale', 'animate-fadeOutScale');
+            }
+            document.body.classList.remove('modal-open');
+        }, 300);
+    },
+
+    handleContactSubmit(event) {
+        event.preventDefault();
+        const name = document.getElementById('contact-name').value;
+        const qualification = document.getElementById('contact-qualification').value;
+        const domain = document.getElementById('contact-domain').value;
+        const linkedin = document.getElementById('contact-linkedin').value;
+        const email = document.getElementById('contact-gmail').value;
+        const phone = document.getElementById('contact-phone').value;
+        const resumeFile = document.getElementById('contact-resume').files[0];
+
+        // Store the submitted data
+        this.state.subscribedData.push({
+            id: this.state.subscribedData.length + 1,
+            date: new Date().toLocaleDateString(),
+            name,
+            qualification,
+            domain,
+            linkedin,
+            email,
+            phone,
+            resumeName: resumeFile ? resumeFile.name : 'N/A',
+            resumeFileObject: resumeFile || null,
+            isContactForm: true
+        });
+
+        this.hideContactModal();
+        this.showMessage(`Thank you, ${name}! Your message has been sent. We will get back to you soon.`, 'success');
     },
 
     // ... (TTS and Carousel logic remain)
@@ -444,7 +529,6 @@ renderAuthModal() {
     },
 };
 
-// Start the app when the window loads
 window.onload = function () {
     // Initial data setup: Use 'admin@tech.com' with password 'adminpass123'
     window.app.state.registeredUsers['test@example.com'] = { password: 'password123', username: 'TestUser' }; 
@@ -456,6 +540,16 @@ window.onload = function () {
         id: 1, date: new Date().toLocaleDateString(), name: 'Alice Chen', qualification: 'PhD Robotics', 
         domain: 'Swarm Control', linkedin: 'link_a', email: 'alice@mail.com', resumeName: 'alice_resume.pdf'
     });
+
+    // Load auth state from localStorage
+    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (isAuthenticated && user) {
+        window.app.setState({
+            isAuthenticated: true,
+            user: user
+        });
+    }
 
     window.app.render(); 
 
