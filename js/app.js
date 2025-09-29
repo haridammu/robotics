@@ -4,7 +4,6 @@ const API_URL_TTS = `https://generativelanguage.googleapis.com/v1beta/models/gem
 const AUDIO_CONTEXT = new (window.AudioContext || window.webkitAudioContext)();
 
 // NOTE: TTS helper functions (base64ToArrayBuffer, pcmToWav, fetchWithBackoff) 
-// Kept for structure, assuming full implementation is here or elsewhere.
 function base64ToArrayBuffer(base64) {
     const binaryString = atob(base64);
     const len = binaryString.length;
@@ -16,22 +15,17 @@ function base64ToArrayBuffer(base64) {
 }
 
 function pcmToWav(pcm16, sampleRate) {
-    // ... pcmToWav logic 
     const numChannels = 1;
     const bytesPerSample = 2; 
     const blockAlign = numChannels * bytesPerSample;
     const byteRate = sampleRate * blockAlign;
     const dataLength = pcm16.length * bytesPerSample;
-
     const buffer = new ArrayBuffer(44 + dataLength);
     const view = new DataView(buffer);
 
-    // RIFF header
     writeString(view, 0, 'RIFF');
     view.setUint32(4, 36 + dataLength, true); 
     writeString(view, 8, 'WAVE');
-
-    // FMT sub-chunk
     writeString(view, 12, 'fmt ');
     view.setUint32(16, 16, true); 
     view.setUint16(20, 1, true); 
@@ -40,17 +34,13 @@ function pcmToWav(pcm16, sampleRate) {
     view.setUint32(28, byteRate, true); 
     view.setUint16(32, blockAlign, true); 
     view.setUint16(34, 16, true); 
-
-    // Data sub-chunk
     writeString(view, 36, 'data');
     view.setUint32(40, dataLength, true); 
 
-    // Write the PCM data
     let offset = 44;
     for (let i = 0; i < pcm16.length; i++, offset += 2) {
         view.setInt16(offset, pcm16[i], true);
     }
-
     return new Blob([buffer], { type: 'audio/wav' });
 
     function writeString(view, offset, string) {
@@ -61,7 +51,7 @@ function pcmToWav(pcm16, sampleRate) {
 }
 
 async function fetchWithBackoff(url, options, maxRetries = 5, delay = 1000) {
-    // ... fetchWithBackoff logic
+    // ... fetchWithBackoff logic (kept for completeness)
     for (let i = 0; i < maxRetries; i++) {
         try {
             const response = await fetch(url, options);
@@ -69,7 +59,6 @@ async function fetchWithBackoff(url, options, maxRetries = 5, delay = 1000) {
             
             if (response.status === 429 || response.status >= 500) {
                 if (i === maxRetries - 1) throw new Error(`API failed after ${maxRetries} retries.`);
-                console.warn(`API request failed with status ${response.status}. Retrying in ${delay / 1000}s...`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 delay *= 2; 
                 continue;
@@ -80,7 +69,6 @@ async function fetchWithBackoff(url, options, maxRetries = 5, delay = 1000) {
 
         } catch (error) {
             if (i === maxRetries - 1) throw error;
-            console.error("Fetch attempt failed:", error.message);
             await new Promise(resolve => setTimeout(resolve, delay));
             delay *= 2;
         }
@@ -95,17 +83,20 @@ window.app = {
         currentPage: 'home',
         isAuthenticated: false,
         isAuthModeLogin: false,
-        user: { email: null, id: null, username: null },
+        isAdminMode: false,
+        user: { email: null, id: null, username: null, role: 'user' },
         registeredUsers: {},
+        activeLogins: {},
+        subscribedData: [],
         carouselIndex: 0,
         isSpeaking: false,
         audioElement: null,
         currentProjectId: null,
         currentWorkshopId: null,
-        authRedirectTarget: null, // NEW: Stores the page to navigate to after successful login
+        authRedirectTarget: null,
     },
     
-    // --- DATA STRUCTURES (Image paths corrected to match new format) ---
+    // --- DATA STRUCTURES (Admin password changed for clarity) ---
     projectsData: [
         { id: 1, title: "Autonomous Rover", description: "Deep learning model for pathfinding in unstructured environments.", image: "images/pro1.jpg" },
         { id: 2, title: "Medical Assistant Bot", description: "Precision surgical aid prototype using micro-actuators.", image: "images/pro2.jpg" },
@@ -125,6 +116,10 @@ window.app = {
         { id: 2, url: "images/pic2.png", title: "Artificial Intelligence"},
         { id: 3, url: "images/pic3.png", title: "Cutting-Edge Research"},
     ],
+    // ADMIN PASSWORD: adminpass123
+    adminData: { 
+        'admin@tech.com': 'adminpass123' 
+    },
     
     // State management
     setState(newState) {
@@ -133,8 +128,6 @@ window.app = {
     },
 
     // --- UI/UX Utilities ---
-    // ... (showMessage, showSubscribeModal, hideSubscribeModal, handleSubscriptionSubmit, updateResumeLabel unchanged)
-
     showMessage(message, type = 'info') {
         const modal = document.getElementById('message-modal');
         const titleEl = document.getElementById('modal-title');
@@ -149,20 +142,56 @@ window.app = {
     },
 
     showSubscribeModal() {
-        document.getElementById('subscribe-modal').classList.remove('hidden');
+        const modal = document.getElementById('subscribe-modal');
+        modal.classList.remove('hidden');
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.classList.add('animate-fadeInScale');
+        }
+        document.body.classList.add('modal-open');
     },
 
     hideSubscribeModal() {
-        document.getElementById('subscribe-modal').classList.add('hidden');
+        const modal = document.getElementById('subscribe-modal');
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.classList.add('animate-fadeOutScale');
+        }
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            if (content) {
+                content.classList.remove('animate-fadeInScale', 'animate-fadeOutScale');
+            }
+            document.body.classList.remove('modal-open');
+        }, 300);
         document.getElementById('resume-file-label').textContent = 'No file selected.';
     },
 
     handleSubscriptionSubmit(event) {
         event.preventDefault();
         const name = document.getElementById('sub-name').value;
+        const qualification = document.getElementById('sub-qualification').value;
+        const domain = document.getElementById('sub-domain').value;
+        const linkedin = document.getElementById('sub-linkedin').value;
+        const email = document.getElementById('sub-gmail').value;
+        const phone = document.getElementById('sub-phone').value;
+        const resumeFile = document.getElementById('sub-resume').files[0];
+
+        // Store the submitted data
+        this.state.subscribedData.push({
+            id: this.state.subscribedData.length + 1,
+            date: new Date().toLocaleDateString(),
+            name,
+            qualification,
+            domain,
+            linkedin,
+            email,
+            phone,
+            resumeName: resumeFile ? resumeFile.name : 'N/A'
+        });
 
         this.hideSubscribeModal();
-        this.showMessage(`Thank you, ${name}! Your subscription details have been noted. We will contact you soon.`, 'success');
+        this.showMessage(`Thank you, ${name}! Your subscription details have been noted.`, 'success');
     },
     
     updateResumeLabel(input) {
@@ -174,126 +203,191 @@ window.app = {
          }
     },
 
+    // --- Local Authentication Logic (FIXED) ---
+   showAuthModal(isLogin = false, isAdmin = false) { 
+    const modal = document.getElementById('auth-modal');
+    
+    // 1. Set the state
+    this.state.isAuthModeLogin = isLogin;
+    this.state.isAdminMode = isAdmin;
+    
+    // 2. IMPORTANT: Manually trigger renderAuthModal immediately to update UI/Button logic
+    this.renderAuthModal(); 
 
-    // --- Local Authentication Logic (MODIFIED for Redirect) ---
-    showAuthModal(isLogin = false) {
-        const modal = document.getElementById('auth-modal');
-        this.setState({ isAuthModeLogin: isLogin });
-        modal.classList.remove('hidden');
-    },
+    // 3. Show modal and re-render app (which will call renderAuthModal again)
+    modal.classList.remove('hidden');
+    const content = modal.querySelector('.modal-content');
+    if (content) {
+        content.classList.add('animate-fadeInScale');
+    }
+    document.body.classList.add('modal-open');
+    this.render(); // Redundant render, but guarantees state update
+},
 
     hideAuthModal() {
-        document.getElementById('auth-modal').classList.add('hidden');
+        const modal = document.getElementById('auth-modal');
+        const content = modal.querySelector('.modal-content');
+        if (content) {
+            content.classList.add('animate-fadeOutScale');
+        }
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            if (content) {
+                content.classList.remove('animate-fadeInScale', 'animate-fadeOutScale');
+            }
+            document.body.classList.remove('modal-open');
+        }, 300);
         document.getElementById('auth-form').reset();
     },
 
-    // NEW: Function to close Auth modal (needed for the close button)
     closeAuthModal() {
         this.hideAuthModal();
-        this.setState({ isAuthModeLogin: false, authRedirectTarget: null });
+        // Clear all auth flags on close
+        this.setState({ isAuthModeLogin: false, authRedirectTarget: null, isAdminMode: false });
     },
-
 
     toggleAuthMode() {
-        this.setState({ isAuthModeLogin: !this.state.isAuthModeLogin });
-        this.renderAuthModal(); 
-    },
-
-    renderAuthModal() {
-        const isLogin = this.state.isAuthModeLogin;
-        const titleEl = document.getElementById('auth-modal-title');
-        const submitBtn = document.getElementById('auth-submit-btn');
-        const toggleBtn = document.getElementById('toggle-auth-mode');
-        const usernameField = document.getElementById('username-field');
-        const closeBtnContainer = document.getElementById('auth-modal-close-container'); // NEW
-
-        if (titleEl) titleEl.textContent = isLogin ? 'Login' : 'Sign Up';
-        if (submitBtn) submitBtn.textContent = isLogin ? 'Login' : 'Sign Up';
-        if (toggleBtn) toggleBtn.textContent = isLogin ? 'Switch to Sign Up' : 'Switch to Login';
-        
-        // Show/Hide Username field
-        if (usernameField) {
-            usernameField.classList.toggle('hidden', isLogin);
-            document.getElementById('auth-username').required = !isLogin;
+        if (!this.state.isAdminMode) {
+            this.setState({ isAuthModeLogin: !this.state.isAuthModeLogin });
+            this.renderAuthModal(); 
         }
-
-        // NEW: Ensure close button is rendered (moved to index.html for simplicity)
     },
+
+    // in js/app.js, replace the entire renderAuthModal function
+
+renderAuthModal() {
+    const { isAuthModeLogin, isAdminMode } = this.state;
+    const titleEl = document.getElementById('auth-modal-title');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    const toggleBtnContainer = document.getElementById('toggle-auth-mode-container'); 
+    const usernameField = document.getElementById('username-field');
+    const adminSwitchBtn = document.querySelector('#auth-modal .text-xs.text-gray-500');
+
+    const titleText = isAdminMode ? 'Admin Login' : (isAuthModeLogin ? 'User Login' : 'User Sign Up');
+    if (titleEl) titleEl.textContent = titleText;
+    
+    // UI visibility based on mode
+    if (toggleBtnContainer) toggleBtnContainer.classList.toggle('hidden', isAdminMode);
+    if (adminSwitchBtn) adminSwitchBtn.classList.toggle('hidden', isAdminMode); 
+    
+    if (usernameField) {
+        usernameField.classList.toggle('hidden', isAuthModeLogin || isAdminMode);
+        document.getElementById('auth-username').required = !(isAuthModeLogin || isAdminMode);
+    }
+    
+    // Button Styling and Text Logic (FIXED TO USE ADMIN RED)
+    if (submitBtn) {
+        // Remove all existing color classes for clean application
+        submitBtn.className = submitBtn.className.replace(/\b(bg-(blue|green|red)-[67]00|shadow-(blue|green|red)-500\/50)\b/g, ''); 
+        
+        if (isAdminMode) {
+             submitBtn.textContent = 'Login';
+             submitBtn.classList.add('bg-red-600', 'hover:bg-red-700', 'shadow-red-500/50'); // Admin is RED
+        } else {
+             submitBtn.textContent = isAuthModeLogin ? 'Login' : 'Sign Up';
+             if (isAuthModeLogin) {
+                 submitBtn.classList.add('bg-green-600', 'hover:bg-green-700', 'shadow-green-500/50');
+             } else {
+                 submitBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'shadow-blue-500/50');
+             }
+        }
+    }
+},
 
     async handleAuthSubmit(event) {
         event.preventDefault();
         const email = event.target.email.value.trim();
         const password = event.target.password.value.trim();
         const username = event.target.username ? event.target.username.value.trim() : null;
-        const users = this.state.registeredUsers;
+        const { registeredUsers, isAdminMode } = this.state;
 
+        // --- ADMIN LOGIN LOGIC ---
+        if (isAdminMode) {
+            if (this.adminData[email] === password) {
+                this.setState({ 
+                    isAuthenticated: true,
+                    user: { email: email, id: email, username: 'Admin', role: 'admin' },
+                    currentPage: 'adminDashboard', 
+                    isAuthModeLogin: false,        
+                    isAdminMode: false             
+                });
+                this.showMessage('Admin Login successful. Welcome to the Dashboard!', 'success');
+                this.hideAuthModal();
+            } else {
+                this.showMessage('Admin Login Failed: Invalid credentials.', 'error');
+            }
+            return;
+        }
+
+        // --- USER LOGIN/SIGNUP LOGIC ---
         if (this.state.isAuthModeLogin) {
-            // LOGIN attempt
-            if (users[email] && users[email].password === password) {
+            // USER LOGIN attempt
+            if (registeredUsers[email] && registeredUsers[email].password === password) {
+                const userDetails = registeredUsers[email];
+                this.state.activeLogins[email] = Date.now(); // Mark as active
                 
                 const redirectTarget = this.state.authRedirectTarget;
-                
                 let newState = { 
                     isAuthenticated: true,
-                    user: { email: email, id: email, username: users[email].username },
+                    user: { email: email, id: email, username: userDetails.username, role: 'user' },
                     isAuthModeLogin: false,
-                    authRedirectTarget: null // Clear the target
+                    authRedirectTarget: null
                 };
-
-                // Redirect logic: If coming from a protected page, go there.
                 if (redirectTarget) {
-                    newState.currentPage = redirectTarget.page;
-                    // Note: Simplified. For 'projectDetails' you'd need the dataId, but here we just navigate to 'projects'.
+                    newState.currentPage = redirectTarget.page; // Redirect to Projects page
                 }
                 
                 this.setState(newState);
-                this.showMessage(`Welcome back, ${users[email].username}!`, 'success');
+                this.showMessage(`Welcome back, ${userDetails.username}!`, 'success');
                 this.hideAuthModal();
             } else {
                 this.showMessage('Login Failed: Invalid email or password.', 'error');
             }
         } else {
-            // SIGN UP attempt (Unchanged)
+            // USER SIGN UP attempt
             if (!username) {
                 this.showMessage('Sign Up Failed: Username is mandatory.', 'error');
                 return;
             }
-            if (users[email]) {
+            if (registeredUsers[email]) {
                 this.showMessage('Sign Up Failed: This email is already registered.', 'error');
             } else if (password.length < 6) {
                 this.showMessage('Sign Up Failed: Password must be at least 6 characters.', 'error');
             }
             else {
-                users[email] = { password: password, username: username };
-                this.setState({ registeredUsers: users, isAuthModeLogin: true });
+                registeredUsers[email] = { password: password, username: username };
+                this.setState({ registeredUsers: registeredUsers, isAuthModeLogin: true });
                 this.showMessage('Sign Up successful! Please login now.', 'success');
                 this.renderAuthModal(); 
                 document.getElementById('auth-form').reset();
             }
         }
     },
-    
+
     async handleLogout() {
-        this.showMessage('You have been successfully logged out.', 'success');
+        const { user } = this.state;
+        if (user.role === 'user') {
+            delete this.state.activeLogins[user.email];
+        }
+
+        this.showMessage(`You have been successfully logged out.`, 'success');
         this.setState({ 
             isAuthenticated: false, 
-            user: { email: null, id: null, username: null },
+            user: { email: null, id: null, username: null, role: 'user' },
             currentPage: 'home', 
             isAuthModeLogin: false,
+            isAdminMode: false,
             authRedirectTarget: null
         });
     },
 
-    // ... (toggleNarration, nextSlide, prevSlide, render unchanged)
-
+    // ... (TTS and Carousel logic remain)
     async toggleNarration() {
         const { isSpeaking, audioElement } = this.state;
-
         if (isSpeaking) {
             this.setState({ isSpeaking: false, audioElement: null });
             return;
         }
-        
         this.showMessage('Simulating TTS narration now...', 'info');
         this.setState({ isSpeaking: true });
         setTimeout(() => {
@@ -306,7 +400,6 @@ window.app = {
         if (isProtected && !this.state.isAuthenticated) {
             this.showMessage('You must be logged in to view the Projects page.', 'error');
             
-            // Set the redirect target to 'projects' before showing login
             this.setState({ 
                 isAuthModeLogin: true, 
                 authRedirectTarget: { page: 'projects', dataId } 
@@ -353,7 +446,16 @@ window.app = {
 
 // Start the app when the window loads
 window.onload = function () {
+    // Initial data setup: Use 'admin@tech.com' with password 'adminpass123'
     window.app.state.registeredUsers['test@example.com'] = { password: 'password123', username: 'TestUser' }; 
+    window.app.state.registeredUsers['robot@tech.com'] = { password: 'pass', username: 'RobotUser' }; 
+    
+    window.app.state.activeLogins['robot@tech.com'] = Date.now();
+    
+    window.app.state.subscribedData.push({
+        id: 1, date: new Date().toLocaleDateString(), name: 'Alice Chen', qualification: 'PhD Robotics', 
+        domain: 'Swarm Control', linkedin: 'link_a', email: 'alice@mail.com', resumeName: 'alice_resume.pdf'
+    });
 
     window.app.render(); 
 
