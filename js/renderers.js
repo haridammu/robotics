@@ -263,22 +263,20 @@ window.app.renderProjects = function() {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                ${this.projectsData.map(project => `
-                    <div class="glass-card rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transition duration-300 border-blue-400/50 relative cursor-pointer"
-                        onclick="window.app.toggleProjectOverlay(${project.id})"
-                    >
-                        <div class="project-image-container w-full h-64 bg-cover bg-center" style="background-image: url('${project.image}');">
-                        </div>
-                        <div class="project-image-overlay absolute inset-0 bg-black bg-opacity-70 text-white p-6 flex flex-col justify-center items-center transition-opacity duration-300 ${this.state.expandedProjectId === project.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}">
-                            <h3 class="text-3xl font-bold mb-4">${project.title}</h3>
-                            <button onclick="event.stopPropagation(); window.app.handleNavigation('projectDetails', false, ${project.id})"
-                                class="py-3 px-8 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold transition duration-300 shadow-md"
-                            >
-                                See Details
-                            </button>
-                        </div>
-                    </div>
-                `).join('')}
+${this.projectsData.map(project => `
+    <div class="glass-card rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transition duration-300 border-blue-400/50 relative cursor-pointer"
+        onclick="window.app.toggleProjectOverlay(${project.id})"
+    >
+        <h3 class="project-image-title-above text-gray-900 text-2xl font-bold px-4 pt-4">${project.title}</h3>
+        <div class="project-image-container w-full h-64 bg-cover bg-center relative" style="background-image: url('${project.image}');">
+        </div>
+        <button onclick="event.stopPropagation(); window.app.handleNavigation('projectDetails', false, ${project.id})"
+            class="mt-4 py-3 px-8 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold transition duration-300 shadow-md w-full"
+        >
+            See Details
+        </button>
+    </div>
+`).join('')}
             </div>
         </div>
     `;
