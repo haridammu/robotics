@@ -1,3 +1,7 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, orderBy, query, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
 // --- Core LLM/API Configuration and Utilities ---
 const API_KEY = ""; 
 const API_URL_TTS = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
@@ -80,45 +84,48 @@ async function fetchWithBackoff(url, options, maxRetries = 5, delay = 1000) {
 window.app = {
     // Firebase initialization
     firebaseConfig: {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_AUTH_DOMAIN",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE_BUCKET",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyCBXYulDZnQawTa7bLLXJI-xpaoUMHuy2A",
+        authDomain: "robotics123-d78b3.firebaseapp.com",
+        projectId: "robotics123-d78b3",
+        storageBucket: "robotics123-d78b3.appspot.com",
+        messagingSenderId: "737574577469",
+        appId: "1:737574577469:web:43f28d72795b39121c5154"
     },
 
     initFirebase() {
-        if (!firebase.apps.length) {
-            firebase.initializeApp(this.firebaseConfig);
-            this.db = firebase.firestore();
-        }
+        this.app = initializeApp(this.firebaseConfig);
+        this.auth = getAuth(this.app);
+        this.db = getFirestore(this.app);
     },
 
     saveSubscriptionToFirestore: async function(subscriptionData) {
         try {
-            await this.db.collection('subscriptions').add(subscriptionData);
+            await addDoc(collection(this.db, 'subscriptions'), subscriptionData);
             this.showMessage('Subscription saved successfully!', 'success');
         } catch (error) {
+            console.error('Error saving subscription to Firestore:', error);
             this.showMessage('Failed to save subscription: ' + error.message, 'error');
         }
     },
 
     saveContactToFirestore: async function(contactData) {
         try {
-            await this.db.collection('contacts').add(contactData);
+            await addDoc(collection(this.db, 'contacts'), contactData);
             this.showMessage('Contact message sent successfully!', 'success');
         } catch (error) {
+            console.error('Error saving contact message to Firestore:', error);
             this.showMessage('Failed to send contact message: ' + error.message, 'error');
         }
     },
 
     loadAdminDataFromFirestore: async function() {
         try {
-            const subscriptionsSnapshot = await this.db.collection('subscriptions').orderBy('timestamp', 'desc').get();
+            const subscriptionsQuery = query(collection(this.db, 'subscriptions'), orderBy('timestamp', 'desc'));
+            const subscriptionsSnapshot = await getDocs(subscriptionsQuery);
             this.state.subscribedData = subscriptionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            const contactsSnapshot = await this.db.collection('contacts').orderBy('timestamp', 'desc').get();
+            const contactsQuery = query(collection(this.db, 'contacts'), orderBy('timestamp', 'desc'));
+            const contactsSnapshot = await getDocs(contactsQuery);
             this.state.contactData = contactsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             this.renderAdminDashboard();
@@ -127,9 +134,9 @@ window.app = {
         }
     },
 
-    deleteAdminRecord: async function(collection, id) {
+    deleteAdminRecord: async function(collectionName, id) {
         try {
-            await this.db.collection(collection).doc(id).delete();
+            await deleteDoc(doc(this.db, collectionName, id));
             this.showMessage('Record deleted successfully!', 'success');
             await this.loadAdminDataFromFirestore();
         } catch (error) {
@@ -373,12 +380,12 @@ renderAuthModal() {
     }
 },
 
-    handleAuthSubmit(event) {
+    async handleAuthSubmit(event) {
         event.preventDefault();
         const email = event.target.email.value.trim();
         const password = event.target.password.value.trim();
         const username = event.target.username ? event.target.username.value.trim() : null;
-        const { registeredUsers, isAdminMode } = this.state;
+        const { isAdminMode } = this.state;
 
         // --- ADMIN LOGIN LOGIC ---
         if (isAdminMode) {
@@ -400,17 +407,20 @@ renderAuthModal() {
             return;
         }
 
-        // --- USER LOGIN/SIGNUP LOGIC ---
+        // --- USER LOGIN/SIGNUP LOGIC USING FIREBASE AUTH ---
+        const user = this.auth;
         if (this.state.isAuthModeLogin) {
             // USER LOGIN attempt
-            if (registeredUsers[email] && registeredUsers[email].password === password) {
-                const userDetails = registeredUsers[email];
-                this.state.activeLogins[email] = Date.now(); // Mark as active
-                
+            try {
+                console.log('Attempting login with email:', email);
+                const userCredential = await signInWithEmailAndPassword(user, email, password);
+                const loggedInUser = userCredential.user;
+                const username = loggedInUser.displayName || email.split('@')[0];
+
                 const redirectTarget = this.state.authRedirectTarget;
                 let newState = { 
                     isAuthenticated: true,
-                    user: { email: email, id: email, username: userDetails.username, role: 'user' },
+                    user: { email: loggedInUser.email, id: loggedInUser.uid, username: username, role: 'user' },
                     isAuthModeLogin: false,
                     authRedirectTarget: null
                 };
@@ -420,11 +430,12 @@ renderAuthModal() {
                 
                 this.setState(newState);
                 localStorage.setItem('isAuthenticated', 'true');
-                localStorage.setItem('user', JSON.stringify({ email: email, id: email, username: userDetails.username, role: 'user' }));
-                this.showMessage(`Welcome back, ${userDetails.username}!`, 'success');
+                localStorage.setItem('user', JSON.stringify(newState.user));
+                this.showMessage(`Welcome back, ${username}!`, 'success');
                 this.hideAuthModal();
-            } else {
-                this.showMessage('Login Failed: Invalid email or password.', 'error');
+            } catch (error) {
+                console.error('Login error:', error);
+                this.showMessage('Login Failed: ' + error.message, 'error');
             }
         } else {
             // USER SIGN UP attempt
@@ -432,17 +443,28 @@ renderAuthModal() {
                 this.showMessage('Sign Up Failed: Username is mandatory.', 'error');
                 return;
             }
-            if (registeredUsers[email]) {
-                this.showMessage('Sign Up Failed: This email is already registered.', 'error');
-            } else if (password.length < 6) {
+            if (password.length < 6) {
                 this.showMessage('Sign Up Failed: Password must be at least 6 characters.', 'error');
+                return;
             }
-            else {
-                registeredUsers[email] = { password: password, username: username };
-                this.setState({ registeredUsers: registeredUsers, isAuthModeLogin: true });
+            try {
+                const userCredential = await createUserWithEmailAndPassword(user, email, password);
+                const newUser = userCredential.user;
+                await updateProfile(newUser, { displayName: username });
+
                 this.showMessage('Sign Up successful! Please login now.', 'success');
+                this.setState({ isAuthModeLogin: true });
                 this.renderAuthModal(); 
                 document.getElementById('auth-form').reset();
+                // Optionally close modal after signup or keep open for login
+                // this.hideAuthModal();
+            } catch (error) {
+                console.error('Signup error:', error);
+                if (error.code === 'auth/email-already-in-use') {
+                    this.showMessage('Sign Up Failed: This email is already registered. Please try logging in instead.', 'error');
+                } else {
+                    this.showMessage('Sign Up Failed: ' + error.message, 'error');
+                }
             }
         }
     },
@@ -584,26 +606,30 @@ window.onload = function () {
     // Initialize Firebase
     window.app.initFirebase();
 
+    // Listen for Firebase Auth state changes
+    window.app.auth.onAuthStateChanged((user) => {
+        if (user) {
+            // User is signed in
+            const username = user.displayName || user.email.split('@')[0];
+            window.app.setState({
+                isAuthenticated: true,
+                user: { email: user.email, id: user.uid, username: username, role: 'user' }
+            });
+        } else {
+            // User is signed out
+            window.app.setState({
+                isAuthenticated: false,
+                user: null
+            });
+        }
+        window.app.render();
+    });
+
     // Initial data setup: Use 'admin@tech.com' with password 'adminpass123'
-    window.app.state.registeredUsers['test@example.com'] = { password: 'password123', username: 'TestUser' };
-    window.app.state.registeredUsers['robot@tech.com'] = { password: 'pass', username: 'RobotUser' };
-
-    window.app.state.activeLogins['robot@tech.com'] = Date.now();
-
     window.app.state.subscribedData.push({
         id: 1, date: new Date().toLocaleDateString(), name: 'Alice Chen', qualification: 'PhD Robotics',
         domain: 'Swarm Control', linkedin: 'link_a', email: 'alice@mail.com', resumeName: 'alice_resume.pdf'
     });
-
-    // Load auth state from localStorage
-    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (isAuthenticated && user) {
-        window.app.setState({
-            isAuthenticated: true,
-            user: user
-        });
-    }
 
     window.app.render();
 
