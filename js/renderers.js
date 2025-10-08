@@ -7,25 +7,21 @@ window.app.renderNavbar = function() {
         { name: 'Home', page: 'home' },
         { name: 'Projects', page: 'projects', protected: true },
         { name: 'Workshops', page: 'workshops' },
-        { name: 'Our Labs', page: 'labs' },
         { name: 'Resources', page: 'resources' },
     ];
 
-    let authButton;
+    let authButton = '';
     let subscribeButton = '';
+    let usernameSpan = '';
+    let logoutButton = '';
     
     if (isAuthenticated) {
         const userName = user?.username ? user.username : 'Guest';
-        authButton = `
-            <div class="flex items-center space-x-4">
-                <span class="text-sm font-medium ${user.role === 'admin' ? 'text-red-600' : 'text-blue-600'} hidden md:block">WELCOME ${userName.toUpperCase()}</span>
-                <button onclick="window.app.handleLogout()"
+        usernameSpan = `<span class="text-sm font-medium text-blue-600 hidden md:block">WELCOME ${userName.toUpperCase()}</span>`;
+        logoutButton = `<button onclick="window.app.handleLogout()"
                     class="py-2 px-4 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold transition duration-300 shadow-lg shadow-red-500/50"
-                >
-                    LOGOUT
-                </button>
-            </div>
-        `;
+                >LOGOUT
+                </button>`;
         
         if (user.role !== 'admin') {
              subscribeButton = `
@@ -35,26 +31,24 @@ window.app.renderNavbar = function() {
                     SUBSCRIBE
                 </button>
             `;
-        } else {
-             // Admin Dashboard Link (Teal for Admin)
-             subscribeButton = `
-                <button onclick="window.app.handleNavigation('adminDashboard', false)"
-                    class="py-2 px-4 rounded-full font-semibold transition duration-300 bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/50"
-                >
-                    ADMIN DASHBOARD
-                </button>
-            `;
         }
+        authButton = '';
     } else {
-        const authMode = this.state.isAuthModeLogin ? 'LOGIN' : 'SIGN UP';
+        usernameSpan = '';
+        subscribeButton = '';
         authButton = `
-            <button onclick="window.app.showAuthModal(${this.state.isAuthModeLogin})"
-                class="py-2 px-4 rounded-full font-semibold transition duration-300 
-                ${authMode === 'SIGN UP' ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/50' : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/50'}"
+            <button onclick="window.app.showAuthModal(false)"
+                class="py-2 px-4 rounded-full font-semibold transition duration-300 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/50"
             >
-                ${authMode}
+                SIGN UP
+            </button>
+            <button onclick="window.app.showAuthModal(true)"
+                class="ml-4 py-2 px-4 rounded-full font-semibold transition duration-300 bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/50"
+            >
+                LOGIN
             </button>
         `;
+        logoutButton = '';
     }
 
     // Admin Login button separate (Only visible when logged out)
@@ -68,12 +62,12 @@ window.app.renderNavbar = function() {
 
 
     const navHTML = `
-        <nav class="flex items-center justify-between p-4 px-8 backdrop-blur-md bg-white/95 sticky top-0 z-40 border-b border-blue-200 shadow-lg">
-            <div class="flex items-center space-x-2">
-                <i data-lucide="microscope" class="w-6 h-6 text-blue-600"></i>
-                <span class="text-2xl font-bold text-gray-900">Tech<span class="text-blue-600">Robotics</span></span>
+        <nav class="flex flex-wrap items-center justify-between p-4 px-4 sm:px-8 backdrop-blur-md bg-white/95 sticky top-0 z-40 border-b border-blue-200 shadow-lg">
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <img src="images/logo.jpg" alt="R-Tech Electronics Logo" class="w-22 h-16 rounded-md object-contain" />
+                <span class="text-xl sm:text-2xl font-bold text-gray-900">R-Tech<span class="text-blue-600"> Electronics</span></span>
             </div>
-            <div class="hidden md:flex items-center space-x-6">
+            <div class="hidden md:flex items-center space-x-2 lg:space-x-6">
                 ${navLinks.map(link => {
                     // Hide main links for admin dashboard view
                     if (user && user.role === 'admin' && link.page !== 'home') return '';
@@ -89,10 +83,17 @@ window.app.renderNavbar = function() {
                     `;
                 }).join('')}
             </div>
-            <div class="flex items-center space-x-4">
-                ${adminLoginBtn}
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                ${usernameSpan}
                 ${subscribeButton}
                 ${authButton}
+                ${logoutButton}
+            </div>
+            <!-- Mobile Menu Button -->
+            <div class="md:hidden flex items-center">
+                <button id="mobile-menu-button" class="p-2 rounded-md text-gray-700 hover:bg-gray-100">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
             </div>
         </nav>
     `;
@@ -121,12 +122,10 @@ window.app.renderContent = function() {
             return this.renderWorkshops();
         case 'workshopDetails':
             return this.renderWorkshopDetails(this.state.currentWorkshopId);
-        case 'adminDashboard': 
+        case 'adminDashboard':
             return this.renderAdminDashboard();
-        case 'labs':
-            return this.renderLabs(); 
         case 'resources':
-            return this.renderResources(); 
+            return this.renderResources();
         default:
             return this.renderHome();
     }
@@ -146,7 +145,7 @@ window.app.renderHome = function() {
                 <div class="relative">
                     <div class="p-6 rounded-lg bg-white/70 backdrop-blur-sm animate-goal border border-blue-400/30 shadow-md">
                         <p class="text-lg text-gray-800 leading-relaxed font-light">
-                            Our primary goal is to **democratize cutting-edge robotic technology**, making it accessible for education, industry, and personal development globally. We strive to be the nexus where human creativity meets machine precision, fostering a community of innovators ready to build the next generation of smart systems. Through relentless research and ethical deployment, we aim to solve complex real-world challenges, from sustainable agriculture to advanced medical assistance, ultimately empowering a future where humans and robots collaborate seamlessly.
+                            Our primary goal is to democratize cutting-edge robotic technology, making it accessible for education, industry, and personal development globally. We strive to be the nexus where human creativity meets machine precision, fostering a community of innovators ready to build the next generation of smart systems. Through relentless research and ethical deployment, we aim to solve complex real-world challenges, from sustainable agriculture to advanced medical assistance, ultimately empowering a future where humans and robots collaborate seamlessly.
                         </p>
                     </div>
                 </div>
@@ -157,9 +156,9 @@ window.app.renderHome = function() {
                     <h3 class="text-4xl font-extrabold text-blue-600 mb-6 text-center flex items-center justify-center anim-pulse-on-click">
                         <i data-lucide="users" class="w-8 h-8 mr-3"></i> ABOUT US
                     </h3>
-                    <div class="p-6 rounded-lg bg-white/70 backdrop-blur-sm border border-blue-400/30 shadow-md">
+                    <div class="p-6 rounded-lg bg-white/70 backdrop-blur-sm border animate-goal border-blue-400/30 shadow-md">
                         <p class="text-lg text-gray-800 leading-relaxed font-light">
-                            Founded by a team of visionary engineers and educators, TechRobotics is committed to pushing the boundaries of AI and automation. We specialize in modular robotics kits, online workshops, and enterprise-level consultancy, ensuring our solutions are practical, scalable, and future-proof. Our history is built on a foundation of academic rigor and a relentless drive for practical, impactful innovation in the field of artificial intelligence and physical systems.
+                            Founded by a team of visionary engineers and educators, R-Tech Electronics is committed to pushing the boundaries of AI and automation. We specialize in modular robotics kits, online workshops, and enterprise-level consultancy, ensuring our solutions are practical, scalable, and future-proof. Our history is built on a foundation of academic rigor and a relentless drive for practical, impactful innovation in the field of artificial intelligence and physical systems.
                         </p>
                     </div>
                 </div>
@@ -168,7 +167,7 @@ window.app.renderHome = function() {
                     <h3 class="text-4xl font-extrabold text-blue-600 mb-6 text-center flex items-center justify-center anim-pulse-on-click">
                         <i data-lucide="target" class="w-8 h-8 mr-3"></i> OUR MOTIVE
                     </h3>
-                    <div class="p-6 rounded-lg bg-white/70 backdrop-blur-sm border border-blue-400/30 shadow-md">
+                    <div class="p-6 rounded-lg bg-white/70 backdrop-blur-sm border animate-goal border-blue-400/30 shadow-md">
                         <p class="text-lg text-gray-800 leading-relaxed font-light">
                             Our core motive is to ignite passion for STEM fields in the younger generation. We believe that computational thinking and practical engineering skills are the bedrock of future innovation, and our products are designed to make learning complex concepts engaging and intuitive. We aim to close the technological gap and ensure that the tools of creation are in the hands of everyone, fostering a truly global community of makers and thinkers.
                         </p>
@@ -180,22 +179,18 @@ window.app.renderHome = function() {
                         <i data-lucide="tool" class="w-8 h-8 mr-3"></i> OUR SERVICES
                     </h3>
                     
-                    <div class="flex flex-col md:flex-row items-start md:space-x-8">
-                        <div class="flex items-center space-x-4 mb-4 md:mb-0 md:w-1/3">
-                            <i data-lucide="toy-brick" class="w-10 h-10 text-blue-500 flex-shrink-0"></i>
-                            <span class="text-3xl font-bold text-gray-900 whitespace-nowrap">TechRobotics</span>
-                        </div>
+                    
                         
-                        <div class="p-6 rounded-lg bg-white/70 backdrop-blur-sm border border-blue-400/30 shadow-md md:w-2/3">
+                        <div class="p-6 rounded-lg bg-white/70 backdrop-blur-sm border animate-goal border-blue-400/30 shadow-md ">
                             <p class="text-lg text-gray-800 leading-relaxed font-light">
-                                We offer **custom industrial automation**, R&D partnerships, and comprehensive **educational curricula** focused on real-time hardware-software interaction and ethical AI design. Our flagship product line includes modular robotics kits, online workshops, and enterprise-level consultancy. We continuously update our offerings to provide the most advanced and aesthetically professional solutions available in the market.
+                                We offer custom industrial automation, R&D partnerships, and comprehensive educational curriculum focused on real-time hardware-software interaction and ethical AI design. Our flagship product line includes modular robotics kits, online workshops, and enterprise-level consultancy. We continuously update our offerings to provide the most advanced and aesthetically professional solutions available in the market.
                             </p>
                         </div>
                     </div>
                     
                     <div class="mt-8 border-t border-gray-300 pt-4 text-center">
                         <h4 class="text-3xl font-extrabold text-gray-900 mb-2">KEEP IN TOUCH</h4>
-                        <p class="text-lg text-gray-600">Follow our journey and join the community on social media (check the fixed footer below!) to see our latest innovations.</p>
+                        <p class="text-lg text-gray-600">Follow our journey and join the community on social media (check the below socail media platforms!) to see our latest innovations.</p>
                     </div>
                 </div>
             </section>
@@ -215,11 +210,11 @@ window.app.renderCarousel = function() {
                 <img id="carousel-img" src="${currentImage.url}" alt="${currentImage.title}" class="w-full h-full object-cover ${transitionClass}" />
                 
                 <div class="absolute inset-0 flex items-end justify-center p-8 bg-black/30">
-                    <button onclick="window.app.handleNavigation('details', false, ${currentImage.id})"
-                        class="text-lg font-bold py-3 px-8 rounded-full bg-orange-500 hover:bg-orange-600 text-white transition duration-300 transform hover:scale-105 shadow-xl shadow-orange-500/50"
-                    >
-                        See Details
-                    </button>
+                <button onclick="window.app.handleNavigation('projectDetails', false, ${currentImage.id})"
+                    class="text-lg font-bold py-3 px-8 rounded-full bg-orange-500 hover:bg-orange-600 text-white transition duration-300 transform hover:scale-105 shadow-xl shadow-orange-500/50"
+                >
+                    See Details
+                </button>
                 </div>
             </div>
 
@@ -263,14 +258,14 @@ window.app.renderProjects = function() {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-${this.projectsData.map(project => `
+${this.projectsData.map((project, index) => `
     <div class="glass-card rounded-xl shadow-xl overflow-hidden hover:shadow-2xl transition duration-300 border-blue-400/50 relative cursor-pointer"
         onclick="window.app.toggleProjectOverlay(${project.id})"
     >
         <h3 class="project-image-title-above text-gray-900 text-2xl font-bold px-4 pt-4">${project.title}</h3>
         <div class="project-image-container w-full h-64 bg-cover bg-center relative" style="background-image: url('${project.image}');">
         </div>
-        <button onclick="event.stopPropagation(); window.app.handleNavigation('projectDetails', false, ${project.id})"
+        <button onclick="event.stopPropagation(); window.app.handleNavigation('projectDetails', false, ${index < 3 ? this.projectsData[2].id : project.id})"
             class="mt-4 py-3 px-8 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold transition duration-300 shadow-md w-full"
         >
             See Details
@@ -293,16 +288,36 @@ window.app.toggleProjectOverlay = function(projectId) {
 // --- Project Details Page Content (Unchanged) ---
 window.app.renderProjectDetails = function(projectId) {
     const project = this.projectsData.find(p => p.id === projectId) || this.projectsData[0];
-    
+
+    // Conditionally render the popup and set its timer only if it hasn't been shown before.
+    let popupHTML = '';
+    if (!this.state.popupHasBeenShown) {
+        popupHTML = `
+            <div id="enhanced-popup" class="fixed top-1/4 right-4 w-96 p-8 bg-white border border-blue-400 rounded-lg shadow-2xl text-center animate-fadeSlideIn cursor-pointer hover:shadow-4xl transition-shadow z-50">
+                <h3 class="text-xl font-extrabold text-blue-700 mb-3">For further project details </h3>
+                <p class="text-base mb-6">Click on the project button for more projects to view</p>
+                <button id="popup-projects-btn" onclick="window.app.handlePopupProjectButtonClick()" class="bg-blue-700 text-white px-6 py-3 rounded-lg hover:bg-blue-800 transition font-semibold shadow-lg">
+                    View More Projects
+                </button>
+            </div>
+        `;  
+
+        // Set a timer to hide the popup and update the state flag.
+        setTimeout(() => {
+            const popup = document.getElementById('enhanced-popup');
+            if (popup) popup.style.display = 'none';
+            this.state.popupHasBeenShown = true; // Prevent it from showing again in this session
+        }, 3000); // 3 seconds
+    }
+
     return `
-        <div class="container mx-auto px-4 py-16">
+        <div class="container mx-auto px-4 py-16 relative">
             <div class="glass-card p-10 rounded-2xl max-w-4xl mx-auto border-4 border-blue-400/50 shadow-2xl">
                 <h1 class="text-5xl font-extrabold text-blue-600 mb-4 anim-pulse-on-click">${project.title}</h1>
                 <p class="text-xl text-gray-700 mb-6">${project.description}</p>
                 
                 <div class="w-full h-80 bg-gray-200 rounded-xl overflow-hidden mb-8 shadow-inner" style="background-image: url('${project.image}'); background-size: cover; background-position: center;">
                     <div class="bg-black/20 w-full h-full flex items-center justify-center">
-                        <span class="text-white text-3xl font-bold">In-Depth View</span>
                     </div>
                 </div>
 
@@ -312,12 +327,13 @@ window.app.renderProjectDetails = function(projectId) {
                     <p>This project represents a major step forward in field autonomy, demonstrating reliable performance even in unpredictable environments. Detailed schematics and source code are available internally.</p>
                 </div>
 
-                <button onclick="window.app.handleNavigation('projects', false)" 
-                    class="mt-10 py-3 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition duration-300 shadow-lg"
+                <button onclick="window.app.setState({ currentPage: 'home' })" 
+                    class="mt-10 py-3 px-8 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition duration-300 shadow-lg mx-auto block"
                 >
-                    Back to Projects
+                    Back to Home
                 </button>
             </div>
+            ${popupHTML}
         </div>
     `;
 };
@@ -408,12 +424,29 @@ window.app.renderDetails = function() {
     `;
 };
 
-window.app.renderLabs = function() {
-    return `<div class="p-10 text-center container mx-auto"><h1 class="text-6xl font-extrabold text-blue-600 mb-4 anim-pulse-on-click">Our Labs</h1><p class="mt-4 text-2xl text-gray-600">This page is coming soon! Expect an immersive showcase of our physical research and development facilities.</p></div>`;
-};
-
 window.app.renderResources = function() {
-    return `<div class="p-10 text-center container mx-auto"><h1 class="text-6xl font-extrabold text-blue-600 mb-4 anim-pulse-on-click">Resources</h1><p class="mt-4 text-2xl text-gray-600">This page is coming soon! We'll provide tutorials, documentation, and open-source contributions here.</p></div>`;
+    return `
+        <div class="container mx-auto px-4 py-16">
+            <h1 class="text-5xl font-extrabold text-blue-600 mb-8 text-center anim-pulse-on-click">Resources</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="glass-card p-6 rounded-xl shadow-lg border-blue-400/50">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Tutorials</h3>
+                    <p class="text-gray-700 mb-4">Step-by-step guides on robotics programming, sensor integration, and AI applications.</p>
+                    <button class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition">Explore Tutorials</button>
+                </div>
+                <div class="glass-card p-6 rounded-xl shadow-lg border-blue-400/50">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Documentation</h3>
+                    <p class="text-gray-700 mb-4">Comprehensive docs for our kits, APIs, and development tools.</p>
+                    <button class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition">View Docs</button>
+                </div>
+                <div class="glass-card p-6 rounded-xl shadow-lg border-blue-400/50">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Open Source</h3>
+                    <p class="text-gray-700 mb-4">Contribute to our GitHub repositories and access community projects.</p>
+                    <a href="https://github.com" target="_blank" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition inline-block">GitHub</a>
+                </div>
+            </div>
+        </div>
+    `;
 };
 
 
@@ -512,29 +545,32 @@ window.app.renderFooter = function() {
     const { user, isAuthenticated } = this.state;
     const userEmail = isAuthenticated ? user.email : 'UnauthenticatedUser@techrobotics.com';
 
-    const mailBody = encodeURIComponent(`Hello Sundar Pichai,\n\nI am writing to you from the TechRobotics website regarding [Your Subject Here].\n\n[Your Message Here]\n\nRegards,\n(Sent by: ${userEmail})`);
-    const mailSubject = encodeURIComponent("Inquiry from TechRobotics Website User");
+    const mailBody = encodeURIComponent(`Hello Sundar Pichai,\n\nI am writing to you from the R-Tech Electronics website regarding [Your Subject Here].\n\n[Your Message Here]\n\nRegards,\n(Sent by: ${userEmail})`);
+    const mailSubject = encodeURIComponent("Inquiry from R-Tech Electronics Website User");
     const mailtoLink = `mailto:sundarpichai@gmail.com?subject=${mailSubject}&body=${mailBody}`;
 
     const socialLinks = [
+        { icon: 'fab fa-facebook', href: 'https://www.facebook.com/people/Ramesh-Bommidi/pfbid02H8v5xTjXArkH9RupRkbrzSeUgCdgM2VZ4qmjonrszpGDzWF9UvrQCw1Ygo9hsWeel/', name: 'facebook', color: 'text-white hover:text-blue-400' },
         { icon: 'fab fa-whatsapp', href: 'https://wa.me/919154631244', name: 'WhatsApp', color: 'text-white hover:text-green-400' },
         { icon: 'fas fa-envelope', href: mailtoLink, name: 'Gmail (Sundar Pichai)', color: 'text-white hover:text-red-400' },
-        { icon: 'fab fa-linkedin', href: 'https://www.linkedin.com/in/sundarpichai/', name: 'LinkedIn', color: 'text-white hover:text-blue-200' },
-        { icon: 'fab fa-youtube', href: 'https://www.youtube.com/@RobotixwithSina', name: 'YouTube', color: 'text-white hover:text-red-400' },
-        { icon: 'fab fa-instagram', href: 'https://www.instagram.com/sundarpichai/?hl=en', name: 'Instagram', color: 'text-white hover:text-pink-400' },
-        { icon: 'fab fa-twitter', href: 'https://twitter.com/sundarpichai', name: 'Twitter (X)', color: 'text-white hover:text-sky-400' },
+        { icon: 'fab fa-linkedin', href: 'https://www.linkedin.com/in/rameshbommidi/', name: 'LinkedIn', color: 'text-white hover:text-blue-200' },
+        { icon: 'fab fa-youtube', href: 'https://www.youtube.com/@R-TechElectronicsTelugu', name: 'YouTube', color: 'text-white hover:text-red-400' },
+        { icon: 'fab fa-instagram', href: 'https://www.instagram.com/_ramesh_bommidi_/', name: 'Instagram', color: 'text-white hover:text-pink-400' },
+        
     ];
 
     const footerHTML = `
-        <div class="container mx-auto flex flex-col md:flex-row items-center justify-between text-sm text-blue-200 px-4">
-            <p>&copy; ${new Date().getFullYear()} TechRobotics. All rights reserved.</p>
-            <div class="flex items-center space-x-4 mt-3 md:mt-0">
+        <div class="container mx-auto flex flex-col md:flex-row items-center md:items-start justify-between text-sm text-blue-200 px-4 space-y-6 md:space-y-0 text-center md:text-left">
+            <div class="flex items-center space-x-3">
+                <p class="text-base">&copy; ${new Date().getFullYear()} R-Tech Electronics. All rights reserved.</p>
+            </div>
+            <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-9">
                 <button id="contact-us-btn" onclick="window.app.showContactModal()" class="py-2 px-4 rounded-full font-semibold transition duration-300 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/50">
                     CONTACT US
                 </button>
-                <div class="flex space-x-6">
+                <div class="flex space-x-5">
                     ${socialLinks.map(link => `
-                        <a href="${link.href}" target="_blank" rel="noopener noreferrer" class="hover:scale-110 transition duration-300 ${link.color}" title="${link.name}">
+                        <a href="${link.href}" target="_blank" rel="noopener noreferrer" class="hover:scale-100 transition duration-300 ${link.color}" title="${link.name}">
                             <i class="${link.icon} text-2xl"></i>
                         </a>
                     `).join('')}
