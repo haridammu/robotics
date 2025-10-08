@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechRobotics - Innovating the Future</title>
+    <meta name="viewport" content="width=1280">
+    <title>R-Tech Electronics - Innovating the Future</title>
+    <link rel="icon" type="image/xl-icon" href="images/logo.jpg">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -105,14 +107,7 @@
                     <input type="tel" id="sub-phone" name="phone" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="+1 (123) 456-7890">
                 </div>
 
-                <div class="mb-8 border border-dashed border-blue-400 p-4 rounded-lg bg-blue-50 text-center">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Resume:</label>
-                    <input type="file" id="sub-resume" accept=".pdf,.doc,.docx,.txt" class="hidden" onchange="window.app.updateResumeLabel(this)">
-                    <button type="button" onclick="document.getElementById('sub-resume').click()" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition duration-300">
-                        Click to upload your resume
-                    </button>
-                    <p id="resume-file-label" class="mt-2 text-sm text-gray-600 italic">No file selected.</p>
-                </div>
+             
 
                 <button type="submit" class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-lg rounded-lg shadow-lg shadow-green-500/50 transition duration-300">
                     Submit Subscription
@@ -131,7 +126,7 @@
             </div>
 
             <p class="text-xl text-center text-gray-800 font-semibold mb-6">
-                Get in Touch with TechRobotics!
+                Get in Touch with R-Tech Electronics!
             </p>
 
             <form onsubmit="window.app.handleContactSubmit(event)">
@@ -167,15 +162,7 @@
                     <input type="tel" id="contact-phone" name="phone" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="+1 (123) 456-7890">
                 </div>
 
-                <div class="mb-8 border border-dashed border-blue-400 p-4 rounded-lg bg-blue-50 text-center">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Resume:</label>
-                    <input type="file" id="contact-resume" class="hidden" onchange="window.app.updateContactResumeLabel(this)">
-                    <button type="button" onclick="document.getElementById('contact-resume').click()" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition duration-300">
-                        Click to upload your resume
-                    </button>
-                    <p id="contact-resume-file-label" class="mt-2 text-sm text-gray-600 italic">No file selected.</p>
-                </div>
-
+            
                 <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-lg rounded-lg shadow-lg shadow-indigo-500/50 transition duration-300">
                     Send Message
                 </button>
