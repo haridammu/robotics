@@ -84,18 +84,27 @@ async function fetchWithBackoff(url, options, maxRetries = 5, delay = 1000) {
 window.app = {
     // Firebase initialization
     firebaseConfig: {
-        apiKey: "AIzaSyCBXYulDZnQawTa7bLLXJI-xpaoUMHuy2A",
-        authDomain: "robotics123-d78b3.firebaseapp.com",
-        projectId: "robotics123-d78b3",
-        storageBucket: "robotics123-d78b3.appspot.com",
-        messagingSenderId: "737574577469",
-        appId: "1:737574577469:web:43f28d72795b39121c5154"
+        apiKey: "AIzaSyCH6smUSeNrCUQd-1udZxgaCKTv68LoF0s",
+        authDomain: "r-tech-electronics-46853.firebaseapp.com",
+        projectId: "r-tech-electronics-46853",
+        storageBucket: "r-tech-electronics-46853.firebasestorage.app",
+        messagingSenderId: "924587245091",
+        appId: "1:924587245091:web:9c055870ac863d857f3b96"
     },
 
     initFirebase() {
         this.app = initializeApp(this.firebaseConfig);
         this.auth = getAuth(this.app);
         this.db = getFirestore(this.app);
+    },
+
+    handlePopupProjectButtonClick() {
+        // Always show auth modal and set redirect target to projects page
+        this.setState({ 
+            isAuthModeLogin: true, 
+            authRedirectTarget: { page: 'projects' } 
+        });
+        this.showAuthModal(true);
     },
 
     saveSubscriptionToFirestore: async function(subscriptionData) {
@@ -193,26 +202,34 @@ window.app = {
     },
 
     // --- UI/UX Utilities ---
-    showMessage(message, type = 'info') {
+    showMessage(message, type = 'info', showButton = true) {
         const modal = document.getElementById('message-modal');
         const titleEl = document.getElementById('modal-title');
         const contentEl = document.getElementById('modal-content');
+        const closeBtn = modal.querySelector('button');
 
         titleEl.textContent = type === 'error' ? 'Error' : (type === 'success' ? 'Success' : 'Message');
         contentEl.textContent = message;
         
         titleEl.className = `text-xl font-bold mb-3 ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`;
         
+        if (closeBtn) {
+            closeBtn.style.display = showButton ? 'block' : 'none';
+        }
+
         modal.classList.remove('hidden');
     },
 
     showSubscribeModal() {
-        // If user is logged in, show thank you popup and redirect to Sundar Pichai YouTube channel
         if (this.state.isAuthenticated && this.state.user.role !== 'admin') {
-            this.showMessage("Thank you for showing interest in joining us", "success");
+            this.showMessage("Thank you for your interest! Returning to the home page...", "success", false);
+
+            window.open("https://www.youtube.com/@R-TechElectronicsTelugu", "_blank");
+
             setTimeout(() => {
-                window.open("https://www.youtube.com/@RobotixwithSina", "_blank");
-            }, 1000);
+                document.getElementById('message-modal').classList.add('hidden');
+                this.setState({ currentPage: 'home' });
+            }, 4000);
             return;
         }
 
@@ -266,17 +283,9 @@ window.app = {
         this.hideSubscribeModal();
     },
     
-    updateResumeLabel(input) {
-         const label = document.getElementById('resume-file-label');
-         if (input.files.length > 0) {
-             label.textContent = `File selected: ${input.files[0].name}`;
-         } else {
-             label.textContent = 'No file selected.';
-         }
-    },
-
-    updateContactResumeLabel(input) {
-         const label = document.getElementById('contact-resume-file-label');
+    updateFileLabel(input, labelId) {
+         const label = document.getElementById(labelId);
+         if (!label) return;
          if (input.files.length > 0) {
              label.textContent = `File selected: ${input.files[0].name}`;
          } else {
@@ -407,10 +416,10 @@ renderAuthModal() {
             return;
         }
 
-        // --- USER LOGIN/SIGNUP LOGIC USING FIREBASE AUTH ---
+        // --- USER LOGIN/SIGNUP LOGIC 
         const user = this.auth;
         if (this.state.isAuthModeLogin) {
-            // USER LOGIN attempt
+          
             try {
                 console.log('Attempting login with email:', email);
                 const userCredential = await signInWithEmailAndPassword(user, email, password);
@@ -438,7 +447,7 @@ renderAuthModal() {
                 this.showMessage('Login Failed: ' + error.message, 'error');
             }
         } else {
-            // USER SIGN UP attempt
+            
             if (!username) {
                 this.showMessage('Sign Up Failed: Username is mandatory.', 'error');
                 return;
