@@ -20,7 +20,28 @@ body {
 }
 
 .animate-goal {
-    animation: slideInFromLeft 1.5s ease-out;
+    animation: slideInFromLeft 2.5s ease-out;
+}
+
+/* Fade and slide in animation for enhanced popup */
+@keyframes fadeSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.animate-fadeSlideIn {
+    animation: fadeSlideIn 0.6s ease forwards;
+}
+
+/* Enhanced shadow for popup hover */
+.shadow-4xl {
+    box-shadow: 0 25px 50px -12px rgba(37, 99, 235, 0.75);
 }
 
 /* Light Glassmorphic card effect for the boxes */
@@ -118,7 +139,7 @@ body {
     background-color: #1d4ed8; /* blue-700 */
 }
 
-/* Project Card Image Overlay - For readable text */
+
 .project-image-overlay {
     position: absolute;
     inset: 0; 
@@ -151,7 +172,7 @@ body {
     box-shadow: 0 15px 25px rgba(59, 130, 246, 0.4);
 }
 
-/* Enhanced Modal Animations */
+
 .modal-blur-bg {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
